@@ -6,6 +6,7 @@ import json
 import logging
 import math
 import re
+import shutil
 import time
 import uuid
 from pathlib import Path
@@ -102,7 +103,7 @@ class ModelStore:
         folder = self.root / model_id
         folder.mkdir(parents=True)
         source = folder / f"source{ext}"
-        upload_path.replace(source)
+        shutil.move(str(upload_path), source)
         try:
             mesh = load_mesh(source)
             mesh.export(str(folder / "mesh.stl"), file_type="stl")
@@ -157,6 +158,4 @@ class ModelStore:
 
 
 def _rmtree(path: Path) -> None:
-    import shutil
-
     shutil.rmtree(path, ignore_errors=True)

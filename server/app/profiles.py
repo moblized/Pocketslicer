@@ -32,6 +32,24 @@ class ProfileError(Exception):
     pass
 
 
+_VARIANT_KEYS = ("printer_extruder_id", "print_extruder_id", "filament_self_index")
+
+
+def has_variants(preset: dict[str, Any]) -> bool:
+    return any("variant" in k for k in preset if k != "printer_variant") or any(k in preset for k in _VARIANT_KEYS)
+
+
+def strip_variants(preset: dict[str, Any]) -> dict[str, Any]:
+    """Drop nozzle-variant bookkeeping so the CLI treats the printer as a plain
+    single-extruder machine. Works around a CLI segfault in some OrcaSlicer
+    releases; per-variant values keep their first (standard nozzle) entry."""
+    return {
+        k: v
+        for k, v in preset.items()
+        if not ((("variant" in k) and k != "printer_variant") or k in _VARIANT_KEYS)
+    }
+
+
 def _is_nil(value: Any) -> bool:
     if value == "nil":
         return True

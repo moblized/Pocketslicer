@@ -32,6 +32,9 @@ def main() -> int:
         assert "inherits" not in data, f"{path} still has inherits"
         assert data.get("from") == "system"
     machine = json.loads(Path(settings[0]).read_text())
+    if os.environ.get("FAKE_ORCA_SEGV_ON_VARIANTS") and "printer_extruder_variant" in machine:
+        import signal
+        os.kill(os.getpid(), signal.SIGSEGV)
     process = json.loads(Path(settings[1]).read_text())
     assert machine["type"] == "machine" and process["type"] == "process"
     assert machine["name"] in process["compatible_printers"]

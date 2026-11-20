@@ -9,5 +9,17 @@
   "default_print_profile": "0.20mm Standard @BBL X1C",
   "default_filament_profile": [
     "Bambu PLA Basic @BBL X1C"
+  ],
+  "printer_variant": "0.4",
+  "extruder_variant_list": [
+    "Direct Drive Standard,Direct Drive High Flow"
+  ],
+  "printer_extruder_id": [
+    "1",
+    "1"
+  ],
+  "printer_extruder_variant": [
+    "Direct Drive Standard",
+    "Direct Drive High Flow"
   ]
 }

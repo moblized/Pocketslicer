@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 FROM ubuntu:24.04
 
-ARG ORCA_VERSION=2.3.2
+# 2.3.2's CLI segfaults on Bambu presets with nozzle variants (OrcaSlicer #13193).
+ARG ORCA_VERSION=2.3.1
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \

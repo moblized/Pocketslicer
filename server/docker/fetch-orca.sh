@@ -4,14 +4,14 @@ set -euo pipefail
 
 VERSION="${1:?usage: fetch-orca.sh VERSION [DEST]}"
 DEST="${2:-/opt/orca}"
-BASE="https://github.com/SoftFever/OrcaSlicer/releases/download/v${VERSION}"
+BASE="https://github.com/OrcaSlicer/OrcaSlicer/releases/download/v${VERSION}"
 
 cd /tmp
 AUTH=()
 if [ -s /run/secrets/github_token ]; then
   AUTH=(-H "Authorization: Bearer $(cat /run/secrets/github_token)")
 fi
-api() { curl -fsSL "${AUTH[@]}" "https://api.github.com/repos/SoftFever/OrcaSlicer/$1"; }
+api() { curl -fsSL "${AUTH[@]}" "https://api.github.com/repos/OrcaSlicer/OrcaSlicer/$1"; }
 pick_asset='
 import json, sys
 assets = [a["browser_download_url"] for a in json.load(sys.stdin).get("assets", [])

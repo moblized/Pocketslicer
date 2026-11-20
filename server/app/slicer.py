@@ -21,7 +21,7 @@ from xml.etree import ElementTree as ET
 from pydantic import BaseModel, Field, field_validator
 
 from .meshes import ModelStore, load_mesh, place_on_bed
-from .profiles import ProfileLibrary, parse_printable_area
+from .profiles import ProfileLibrary, has_variants, parse_printable_area, strip_variants
 
 log = logging.getLogger("pocketslicer")
 
@@ -65,7 +65,12 @@ class SliceRequest(BaseModel):
 
 
 class SliceError(Exception):
-    pass
+    def __init__(self, message: str, code: int | None = None) -> None:
+        super().__init__(message)
+        self.code = code
+
+
+CRASH_CODES = (-11, 139, -6, 134)
 
 
 def apply_overrides(process: dict[str, Any], req: SliceRequest) -> dict[str, Any]:
@@ -269,7 +274,7 @@ def run_orca(
     code = proc.returncode
     result_file = out / OUTPUT_NAME
     if code != 0 or not result_file.exists():
-        raise SliceError(_explain_failure(out, log_path, code))
+        raise SliceError(_explain_failure(out, log_path, code), code)
     return result_file
 
 
@@ -401,20 +406,31 @@ class JobManager:
                 if changes:
                     self._update(job_id, **changes)
 
-            result = run_orca(
-                orca_bin=self.settings.orca_bin,
-                wrapper=self.settings.orca_wrapper,
-                work=work,
-                machine=machine,
-                process=process,
-                filament=filament,
-                model_files=[model_file] * req.copies,
-                arrange=req.copies > 1 or req.auto_orient,
-                orient=req.auto_orient,
-                bed_type=req.bed_type if self.settings.orca_bed_type_flag else None,
-                timeout=self.settings.slice_timeout,
-                on_progress=progress,
-            )
+            def slice_with(m: dict[str, Any], p: dict[str, Any], f: dict[str, Any]) -> Path:
+                return run_orca(
+                    orca_bin=self.settings.orca_bin,
+                    wrapper=self.settings.orca_wrapper,
+                    work=work,
+                    machine=m,
+                    process=p,
+                    filament=f,
+                    model_files=[model_file] * req.copies,
+                    arrange=req.copies > 1 or req.auto_orient,
+                    orient=req.auto_orient,
+                    bed_type=req.bed_type if self.settings.orca_bed_type_flag else None,
+                    timeout=self.settings.slice_timeout,
+                    on_progress=progress,
+                )
+
+            try:
+                result = slice_with(machine, process, filament)
+            except SliceError as exc:
+                if exc.code not in CRASH_CODES or not any(has_variants(d) for d in (machine, process, filament)):
+                    raise
+                log.warning("OrcaSlicer crashed on job %s; retrying without nozzle variants", job_id)
+                self._update(job_id, message="Retrying", progress=5.0)
+                shutil.rmtree(work / "out", ignore_errors=True)
+                result = slice_with(strip_variants(machine), strip_variants(process), strip_variants(filament))
             stats = read_result_3mf(result)
             stats["output_bytes"] = result.stat().st_size
             self._update(job_id, status="done", progress=100.0, message="Ready to print", result=stats)

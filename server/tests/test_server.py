@@ -281,3 +281,29 @@ def test_printer_not_configured(client):
     assert s["configured"] is False
     r = client.post("/api/jobs/abc/print", json={})
     assert r.status_code == 409
+
+
+def test_strip_variants():
+    from app.profiles import has_variants, strip_variants
+
+    m = {"name": "x", "printer_variant": "0.4", "printer_extruder_variant": ["a", "b"],
+         "printer_extruder_id": ["1", "1"], "extruder_variant_list": ["a,b"], "nozzle_volume": ["107", "107"]}
+    assert has_variants(m)
+    out = strip_variants(m)
+    assert out == {"name": "x", "printer_variant": "0.4", "nozzle_volume": ["107", "107"]}
+    assert not has_variants(out)
+
+
+def test_crash_retries_without_variants(client, monkeypatch):
+    monkeypatch.setenv("FAKE_ORCA_SEGV_ON_VARIANTS", "1")
+    opts = client.get(f"/api/printers/{X1C}/options").json()
+    model = _upload_cube(client)
+    job = client.post("/api/jobs", json={"model_id": model["id"], "printer": X1C,
+                                         "process": opts["default_process"],
+                                         "filament": opts["default_filament"]}).json()
+    done = _wait(client, job["id"])
+    assert done["status"] == "done", done
+    work = Path(json.loads((client.tmp / "orca_args.json").read_text())["argv"][
+        json.loads((client.tmp / "orca_args.json").read_text())["argv"].index("--outputdir") + 1]).parent
+    machine = json.loads((work / "machine.json").read_text())
+    assert "printer_extruder_variant" not in machine

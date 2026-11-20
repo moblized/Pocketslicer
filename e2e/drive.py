@@ -120,7 +120,7 @@ def open_result():
 
 def plate():
     tap(wait_for(text="Change", exact=True))
-    wait_for(text="Print settings", timeout=60)
+    wait_for(text="Quality", exact=True, timeout=60)
     time.sleep(4)
     shot("04-plate")
     tap(wait_for(text="X +90°"))
@@ -140,7 +140,7 @@ def reslice():
 
 def filament_picker():
     adb("shell", "input", "keyevent", "4")
-    wait_for(text="Print settings", timeout=20)
+    wait_for(text="Quality", exact=True, timeout=20)
     tap(wait_for(text="Filament", exact=True))
     wait_for(text="Search")
     time.sleep(1)
@@ -148,12 +148,29 @@ def filament_picker():
     adb("shell", "input", "keyevent", "4")
 
 
-def dark_mode():
-    for _ in range(4):
+def go_home():
+    for _ in range(6):
         if find(text="Open a model"):
-            break
+            return
+        focus = adb("shell", "dumpsys", "window", check=False)
+        if PKG not in "".join(l for l in focus.splitlines() if "mCurrentFocus" in l):
+            adb("shell", "am", "start", "-n", f"{PKG}/.MainActivity")
+            time.sleep(3)
+            continue
         adb("shell", "input", "keyevent", "4")
-        time.sleep(1)
+        time.sleep(1.5)
+    wait_for(text="Open a model", timeout=10)
+
+
+def print_sheet():
+    go_home()
+    tap(wait_for(text="desk_bracket"))
+    wait_for(text="Ready to print")
+    shot("11-result-print-button")
+
+
+def dark_mode():
+    go_home()
     tap(wait_for(desc="Settings"))
     tap(wait_for(text="Dark", exact=True))
     time.sleep(2)
@@ -164,7 +181,7 @@ def dark_mode():
 
 
 for name, fn in [("setup", setup), ("result", open_result), ("plate", plate), ("reslice", reslice),
-                 ("filament", filament_picker), ("dark", dark_mode)]:
+                 ("filament", filament_picker), ("dark", dark_mode), ("print", print_sheet)]:
     step(name, fn)
 
 crash_check()

@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   e2e:
@@ -66,8 +66,20 @@ jobs:
         if: always()
         run: docker logs server 2>&1 | tail -40
 
-      - uses: actions/upload-artifact@v4
+      - name: Publish screenshots to the e2e-shots branch
         if: always()
-        with:
-          name: e2e-screenshots
-          path: e2e-shots/
+        run: |
+          [ -d e2e-shots ] || exit 0
+          cd e2e-shots
+          git init -q && git checkout -q -b e2e-shots
+          git add . && git -c user.name="PocketSlicer CI" -c user.email="ci@users.noreply.github.com" commit -qm "e2e screenshots for ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" e2e-shots
+
+      - name: Is the published server image public?
+        if: always()
+        run: |
+          if docker pull -q ghcr.io/moblized/pocketslicer-server:latest > /dev/null 2>&1; then
+            echo "::notice title=GHCR::The server image can be pulled without logging in."
+          else
+            echo "::warning title=GHCR::The server image is private. Make the package public so TrueNAS can pull it."
+          fi

@@ -106,12 +106,16 @@ def test_parse_slice_info():
 
     xml = b"""<config><plate><metadata key="prediction" value="3600"/><metadata key="weight" value="12.5"/>
     <filament id="1" type="PLA" color="#000000" used_m="4.2" used_g="12.5"/>
-    <warning msg="Floating regions" level="1"/></plate></config>"""
+    <warning msg="Floating regions" level="1"/>
+    <warning msg="bed_temperature_too_high_than_filament" level="1"/>
+    <warning msg="some_new_code" level="1"/></plate></config>"""
     stats = parse_slice_info(xml)
     assert stats["print_time_s"] == 3600
     assert stats["weight_g"] == 12.5
     assert stats["length_m"] == 4.2
-    assert stats["warnings"] == ["Floating regions"]
+    assert stats["warnings"][0] == "Floating regions"
+    assert stats["warnings"][1].startswith("The bed is hotter")
+    assert stats["warnings"][2] == "Some new code."
 
 
 def test_apply_overrides():
@@ -236,7 +240,7 @@ def test_full_slice_flow(client):
     assert done["result"]["print_time_s"] == 1234 * 3
     assert done["result"]["weight_g"] == 16.5
     assert done["result"]["layers"] == 100
-    assert done["result"]["warnings"] == ["fake warning"]
+    assert done["result"]["warnings"] == ["fake warning"]  # free text passes through
 
     args = json.loads((client.tmp / "orca_args.json").read_text())["argv"]
     assert args[args.index("--arrange") + 1] == "1"

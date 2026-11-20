@@ -87,6 +87,29 @@ def apply_overrides(process: dict[str, Any], req: SliceRequest) -> dict[str, Any
     return process
 
 
+WARNING_TEXT = {
+    "bed_temperature_too_high_than_filament": (
+        "The bed is hotter than this filament's softening point. For PLA, open the door "
+        "or remove the top glass to avoid clogs."
+    ),
+    "filament_type_mismatch": "The filament in the slot doesn't match the sliced filament type.",
+    "nozzle_temperature_too_low": "Nozzle temperature is low for this filament.",
+    "nozzle_temperature_too_high": "Nozzle temperature is high for this filament.",
+    "floating_regions": "Some areas start in mid-air. Supports might be needed.",
+    "objects_outside": "Part of the model is outside the build plate.",
+}
+
+
+def friendly_warning(msg: str) -> str:
+    key = msg.strip()
+    if key in WARNING_TEXT:
+        return WARNING_TEXT[key]
+    if re.fullmatch(r"[a-z0-9_]+", key):
+        text = key.replace("_", " ")
+        return text[:1].upper() + text[1:] + "."
+    return key
+
+
 def parse_slice_info(data: bytes) -> dict[str, Any]:
     root = ET.fromstring(data)
     total_time = 0.0
@@ -110,8 +133,8 @@ def parse_slice_info(data: bytes) -> dict[str, Any]:
             )
         for w in plate.findall("warning"):
             msg = w.get("msg")
-            if msg:
-                warnings.append(msg)
+            if msg and friendly_warning(msg) not in warnings:
+                warnings.append(friendly_warning(msg))
     if not total_weight and filaments:
         total_weight = sum(f["used_g"] for f in filaments)
     return {

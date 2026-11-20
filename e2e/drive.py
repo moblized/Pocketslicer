@@ -120,14 +120,16 @@ def open_result():
 
 def plate():
     tap(wait_for(text="Change", exact=True))
-    wait_for(text="Quality", exact=True, timeout=60)
+    wait_for(text="Slice", exact=True, timeout=60)
     time.sleep(4)
     shot("04-plate")
     tap(wait_for(text="X +90°"))
     time.sleep(2)
     shot("05-rotated")
-    adb("shell", "input", "swipe", "500", "1800", "500", "700", "400")
-    time.sleep(1)
+    for _ in range(2):
+        adb("shell", "input", "swipe", "540", "2000", "540", "1250", "500")
+        time.sleep(1)
+    wait_for(text="Quality", exact=True, timeout=10)
     shot("06-plate-settings")
 
 
@@ -140,7 +142,10 @@ def reslice():
 
 def filament_picker():
     adb("shell", "input", "keyevent", "4")
-    wait_for(text="Quality", exact=True, timeout=20)
+    wait_for(text="Slice", exact=True, timeout=20)
+    for _ in range(2):
+        adb("shell", "input", "swipe", "540", "2000", "540", "1250", "500")
+        time.sleep(1)
     tap(wait_for(text="Filament", exact=True))
     wait_for(text="Search")
     time.sleep(1)

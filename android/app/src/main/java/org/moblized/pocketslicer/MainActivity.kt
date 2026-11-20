@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -26,7 +27,14 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) handleIntent(intent)
-        setContent { Root(container) }
+        setContent { Root(container, ::applySystemBars) }
+    }
+
+    /** Status/navigation bar icons follow the app's theme, not just the system's. */
+    private fun applySystemBars(dark: Boolean) {
+        val transparent = android.graphics.Color.TRANSPARENT
+        val style = if (dark) SystemBarStyle.dark(transparent) else SystemBarStyle.light(transparent, transparent)
+        enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
     }
 
     override fun onStop() {
@@ -56,7 +64,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun Root(container: AppContainer) {
+private fun Root(container: AppContainer, onDarkChanged: (Boolean) -> Unit) {
     val loaded: AppSettings? by container.settings.settings.collectAsStateWithLifecycle(initialValue = null)
     val systemDark = isSystemInDarkTheme()
     val settings = loaded ?: return
@@ -66,6 +74,7 @@ private fun Root(container: AppContainer) {
         ThemeMode.DARK -> true
     }
     LaunchedEffect(dark) {
+        onDarkChanged(dark)
         // Keep the launcher icon in step with the app's light/dark look (applied in onStop).
         container.pendingDarkIcon = dark
     }

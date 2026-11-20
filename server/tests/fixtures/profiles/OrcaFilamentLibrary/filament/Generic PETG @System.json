@@ -1,0 +1,11 @@
+{
+  "type": "filament",
+  "name": "Generic PETG @System",
+  "inherits": "fdm_filament_common",
+  "from": "system",
+  "instantiation": "true",
+  "filament_vendor": [
+    "Generic"
+  ],
+  "compatible_printers": []
+}

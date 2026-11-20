@@ -1,0 +1,11 @@
+{
+  "type": "filament",
+  "name": "Bambu PLA Basic @BBL X1C",
+  "inherits": "Bambu PLA Basic @base",
+  "from": "system",
+  "setting_id": "GFSA00",
+  "instantiation": "true",
+  "compatible_printers": [
+    "Bambu Lab X1 Carbon 0.4 nozzle"
+  ]
+}

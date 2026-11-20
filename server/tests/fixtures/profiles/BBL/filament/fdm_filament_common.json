@@ -1,0 +1,15 @@
+{
+  "type": "filament",
+  "name": "fdm_filament_common",
+  "from": "system",
+  "instantiation": "false",
+  "filament_retraction_length": [
+    "nil"
+  ],
+  "filament_type": [
+    "PLA"
+  ],
+  "nozzle_temperature": [
+    "200"
+  ]
+}

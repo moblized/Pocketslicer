@@ -1,0 +1,6 @@
+<resources>
+    <color name="icon_bg">#00A88E</color>
+    <color name="icon_bg_dark">#121417</color>
+    <color name="icon_fg_dark">#2FD3B3</color>
+    <color name="splash_bg">#F3F6F6</color>
+</resources>

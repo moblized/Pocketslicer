@@ -1,0 +1,20 @@
+{
+  "type": "machine",
+  "name": "fdm_machine_common",
+  "from": "system",
+  "instantiation": "false",
+  "printable_area": [
+    "0x0",
+    "200x0",
+    "200x200",
+    "0x200"
+  ],
+  "printable_height": "200",
+  "nozzle_diameter": [
+    "0.4"
+  ],
+  "retraction_length": [
+    "0.8"
+  ],
+  "printer_technology": "FFF"
+}

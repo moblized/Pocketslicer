@@ -1,0 +1,15 @@
+{
+  "type": "filament",
+  "name": "Generic ABS @BBL",
+  "inherits": "fdm_filament_pla",
+  "from": "system",
+  "instantiation": "true",
+  "filament_type": [
+    "ABS"
+  ],
+  "filament_vendor": [
+    "Generic"
+  ],
+  "compatible_printers": [],
+  "compatible_printers_condition": "printer_model=~/.*X1.*/ and nozzle_diameter[0]==0.4"
+}

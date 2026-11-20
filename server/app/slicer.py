@@ -216,6 +216,7 @@ def run_orca(
            "--arrange", "1" if arrange else "0",
            "--orient", "1" if orient else "0",
            "--allow-newer-file",
+           "--debug", "3",
            "--outputdir", str(out),
            "--export-3mf", OUTPUT_NAME]
     if bed_type:

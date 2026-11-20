@@ -26,6 +26,9 @@ class AppContainer(val app: Application) {
     private var cachedKey: Pair<String, String>? = null
     private var cachedApi: PocketApi? = null
 
+    /** Icon style to apply once the app is in the background (null = no change pending). */
+    @Volatile var pendingDarkIcon: Boolean? = null
+
     /** A file someone opened or shared into the app, waiting to be uploaded. */
     private val _pendingImport = MutableStateFlow<Uri?>(null)
     val pendingImport: StateFlow<Uri?> = _pendingImport.asStateFlow()

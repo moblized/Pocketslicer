@@ -2,7 +2,10 @@ package org.moblized.pocketslicer.ui
 
 import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -14,6 +17,15 @@ import org.moblized.pocketslicer.AppContainer
 fun AppNavigation(container: AppContainer, startConfigured: Boolean, dark: Boolean) {
     val nav = rememberNavController()
     val start = remember { if (startConfigured) "home" else "setup" }
+    val pending by container.pendingImport.collectAsStateWithLifecycle()
+
+    // A file shared into the app while another screen is open: go home, which uploads it.
+    LaunchedEffect(pending) {
+        val route = nav.currentDestination?.route
+        if (pending != null && route != null && route != "home" && route != "setup") {
+            nav.popBackStack("home", inclusive = false)
+        }
+    }
 
     fun openPlate(modelId: String, jobId: String?) {
         val route = "plate/$modelId" + if (jobId != null) "?job=${Uri.encode(jobId)}" else ""

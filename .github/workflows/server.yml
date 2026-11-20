@@ -54,6 +54,12 @@ jobs:
       - name: Slice test parts with the real OrcaSlicer
         run: docker run --rm pocketslicer-server:test /opt/venv/bin/python -m app.smoke
 
+      - name: OrcaSlicer diagnostics
+        if: failure()
+        run: |
+          docker run --rm -v "$PWD/server/docker:/dbg:ro" pocketslicer-server:test bash -c \
+            "apt-get update -qq > /dev/null && apt-get install -y -qq gdb file > /dev/null 2>&1; bash /dbg/debug-orca.sh"
+
       - name: API answers inside the container
         run: |
           docker run -d --name api -p 8790:8790 -e API_TOKEN=ci pocketslicer-server:test

@@ -16,7 +16,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # OrcaSlicer's shared-library needs (GTK/WebKit are linked even in CLI mode), plus Python.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates curl python3 python3-venv \
-      libgtk-3-0t64 libwebkit2gtk-4.1-0 libgl1 libegl1 libglu1-mesa libopengl0 libosmesa6 \
+      libgtk-3-0t64 libwebkit2gtk-4.1-0 libgl1 libgl1-mesa-dri libegl1 libglu1-mesa libopengl0 libosmesa6 \
       libgstreamer1.0-0 libgstreamer-plugins-base1.0-0 libsecret-1-0 libnotify4 libsoup-3.0-0 \
       libdbus-1-3 libudev1 libfontconfig1 libmspack0t64 fonts-dejavu-core xvfb xauth \
     && rm -rf /var/lib/apt/lists/*

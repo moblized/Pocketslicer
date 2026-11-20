@@ -29,6 +29,16 @@ class MainActivity : ComponentActivity() {
         setContent { Root(container) }
     }
 
+    override fun onStop() {
+        super.onStop()
+        // Swap the launcher icon only while the app is out of view: some launchers
+        // restart an app whose launcher entry changes.
+        container.pendingDarkIcon?.let { dark ->
+            container.pendingDarkIcon = null
+            runCatching { IconSwitcher.apply(this, dark) }
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleIntent(intent)
@@ -56,8 +66,8 @@ private fun Root(container: AppContainer) {
         ThemeMode.DARK -> true
     }
     LaunchedEffect(dark) {
-        // Keep the launcher icon in step with the app's light/dark look.
-        runCatching { IconSwitcher.apply(container.app, dark) }
+        // Keep the launcher icon in step with the app's light/dark look (applied in onStop).
+        container.pendingDarkIcon = dark
     }
     PocketSlicerTheme(dark) {
         AppNavigation(container = container, startConfigured = settings.isConfigured, dark = dark)

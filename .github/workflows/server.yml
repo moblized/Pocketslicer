@@ -57,8 +57,9 @@ jobs:
       - name: OrcaSlicer diagnostics
         if: failure()
         run: |
-          docker run --rm -v "$PWD/server/docker:/dbg:ro" pocketslicer-server:test bash -c \
-            "apt-get update -qq > /dev/null && apt-get install -y -qq gdb file > /dev/null 2>&1; bash /dbg/debug-orca.sh"
+          echo "${{ secrets.GITHUB_TOKEN }}" > "$RUNNER_TEMP/gh_token"
+          docker run --rm -v "$PWD/server/docker:/dbg:ro" -v "$RUNNER_TEMP/gh_token:/run/secrets/github_token:ro" \
+            pocketslicer-server:test bash /dbg/debug-orca.sh
 
       - name: API answers inside the container
         run: |

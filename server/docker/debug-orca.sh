@@ -1,57 +1,70 @@
 #!/usr/bin/env bash
-# CI diagnostics: run the OrcaSlicer CLI directly in several ways and report what happens.
+# CI diagnostics: try OrcaSlicer CLI workarounds for the multi-extruder segfault.
 set -uo pipefail
-cd /tmp
-mkdir -p dbg && cd dbg
+mkdir -p /tmp/dbg && cd /tmp/dbg
 
-PYTHONPATH=/app /opt/venv/bin/python - <<'EOF'
-import json, os
-os.environ.setdefault("API_TOKEN", "x")
+presets() { # $1 = orca dir, $2 = mode (plain|addkeys|strip), $3 = out dir
+  mkdir -p "$3"
+  PYTHONPATH=/app /opt/venv/bin/python - "$1" "$2" "$3" <<'EOF'
+import json, sys
+from pathlib import Path
+orca, mode, out = sys.argv[1], sys.argv[2], Path(sys.argv[3])
 from app.profiles import ProfileLibrary
 import trimesh
-lib = ProfileLibrary("/opt/orca/resources/profiles")
+lib = ProfileLibrary(Path(orca) / "resources/profiles")
 pr = "Bambu Lab X1 Carbon 0.4 nozzle"
 o = lib.options(pr)
-json.dump(lib.resolve("machine", pr), open("machine.json", "w"), indent=1)
-json.dump(lib.resolve("process", o["default_process"]), open("process.json", "w"), indent=1)
-json.dump(lib.resolve("filament", o["default_filament"]), open("filament.json", "w"), indent=1)
-m = trimesh.creation.box(extents=(20, 20, 20)); m.apply_translation([128, 128, 10]); m.export("cube.stl")
-print("presets written:", [os.path.getsize(f) for f in ("machine.json", "process.json", "filament.json")])
+m = lib.resolve("machine", pr)
+p = lib.resolve("process", o["default_process"])
+f = lib.resolve("filament", o["default_filament"])
+def show(name, d):
+    keys = {k: v for k, v in d.items() if any(s in k for s in ("variant", "extruder_id", "extruder_type", "nozzle_volume", "filament_map", "self_index"))}
+    print(f"  {name}: {json.dumps(keys)[:600]}")
+if mode == "plain":
+    show("machine", m); show("process", p); show("filament", f)
+if mode == "addkeys":
+    m.setdefault("extruder_type", ["Direct Drive"])
+    m.setdefault("nozzle_volume_type", ["Standard"])
+    p.setdefault("filament_map", ["1"])
+    f.setdefault("filament_map", ["1"])
+if mode == "strip":
+    for d in (m, p, f):
+        for k in list(d):
+            if "variant" in k or k in ("printer_extruder_id", "print_extruder_id", "filament_self_index"):
+                del d[k]
+json.dump(m, open(out / "machine.json", "w"), indent=1)
+json.dump(p, open(out / "process.json", "w"), indent=1)
+json.dump(f, open(out / "filament.json", "w"), indent=1)
+c = trimesh.creation.box(extents=(20, 20, 20)); c.apply_translation([128, 128, 10]); c.export(out / "cube.stl")
 EOF
-
-echo "=== AppRun ==="
-cat /opt/orca/AppRun
-ls /opt/orca /opt/orca/bin | head -40
-
-D=/tmp/dbg
-BASE=(--slice 0 --load-settings "$D/machine.json;$D/process.json" --load-filaments "$D/filament.json" --allow-newer-file --debug 4)
-
-run() {
-  local name="$1"; shift
-  rm -rf "out_$name"; mkdir -p "out_$name"
-  echo "=== variant: $name ==="
-  echo "+ $*"
-  ( cd "out_$name" && timeout 300 "$@" > log.txt 2>&1 ); local code=$?
-  echo "exit code: $code"
-  grep -v "^\s*$" "out_$name/log.txt" | tail -n 45
-  ls -la "out_$name" | head -20
-  echo "::notice title=orca variant $name::exit $code; files: $(ls out_$name | tr '\n' ' ')"
 }
 
-run plain        /opt/orca/AppRun "${BASE[@]}" --outputdir "$PWD/out_plain" --export-3mf plate.gcode.3mf /tmp/dbg/cube.stl
-run xvfb         xvfb-run -a /opt/orca/AppRun "${BASE[@]}" --outputdir "$PWD/out_xvfb" --export-3mf plate.gcode.3mf /tmp/dbg/cube.stl
-run nothumb      /opt/orca/AppRun "${BASE[@]}" --outputdir "$PWD/out_nothumb" --export-3mf plate.gcode.3mf --no-check /tmp/dbg/cube.stl
-run minsave      /opt/orca/AppRun "${BASE[@]}" --outputdir "$PWD/out_minsave" --export-3mf plate.gcode.3mf --min-save /tmp/dbg/cube.stl
-run gcodeonly    /opt/orca/AppRun "${BASE[@]}" --outputdir "$PWD/out_gcodeonly" /tmp/dbg/cube.stl
-run nobed        /opt/orca/AppRun "${BASE[@]}" --outputdir "$PWD/out_nobed" --export-3mf plate.gcode.3mf /tmp/dbg/cube.stl
-run bed          /opt/orca/AppRun "${BASE[@]}" --outputdir "$PWD/out_bed" --export-3mf plate.gcode.3mf --curr-bed-type "Textured PEI Plate" /tmp/dbg/cube.stl
+attempt() { # $1 name, $2 orca dir, $3 preset mode, extra args...
+  local name="$1" orca="$2" mode="$3"; shift 3
+  local d="/tmp/dbg/$name"
+  rm -rf "$d"; presets "$orca" "$mode" "$d"
+  echo "=== $name ($orca, presets: $mode) ==="
+  ( cd "$d" && timeout 300 "$orca/AppRun" --slice 0 --load-settings "$d/machine.json;$d/process.json" \
+      --load-filaments "$d/filament.json" --allow-newer-file --debug 3 --outputdir "$d" \
+      --export-3mf plate.gcode.3mf "$@" "$d/cube.stl" > "$d/log.txt" 2>&1 )
+  local code=$?
+  grep -v "^\s*$" "$d/log.txt" | grep -iv "update_slice_result_valid_state\|set_pos_and_size\|arrange progress" | tail -n 12
+  local ok="no"; [ -s "$d/plate.gcode.3mf" ] && ok="yes"
+  echo "RESULT $name: exit $code, 3mf=$ok"
+  echo "::notice title=orca $name::exit $code, gcode.3mf produced: $ok"
+}
 
-if command -v gdb > /dev/null; then
-  echo "=== gdb backtrace (plain) ==="
-  mkdir -p out_gdb
-  export LD_LIBRARY_PATH="/opt/orca/usr/lib:/opt/orca/usr/lib/x86_64-linux-gnu:/opt/orca/lib:${LD_LIBRARY_PATH:-}"
-  ( cd out_gdb && timeout 300 gdb -q -batch -ex "set pagination off" -ex run -ex bt -ex "info sharedlibrary" \
-      --args /opt/orca/bin/orca-slicer "${BASE[@]}" --outputdir "$PWD" --export-3mf plate.gcode.3mf /tmp/dbg/cube.stl \
-      2>&1 | grep -v "^\[New Thread\|^\[Thread" | tail -n 60 )
-fi
+attempt v232_plain   /opt/orca plain
+attempt v232_addkeys /opt/orca addkeys
+attempt v232_strip   /opt/orca strip
+
+for v in 2.3.1 latest; do
+  if bash /dbg/fetch-orca.sh "$v" "/opt/orca-$v" > /tmp/dbg/fetch-$v.log 2>&1; then
+    attempt "v${v//./}_plain" "/opt/orca-$v" plain
+    attempt "v${v//./}_strip" "/opt/orca-$v" strip
+  else
+    echo "::notice title=orca $v::download failed: $(tail -n 3 /tmp/dbg/fetch-$v.log | tr '\n' ' ')"
+  fi
+done
+grep -h "Downloading" /tmp/dbg/fetch-*.log
 exit 0
